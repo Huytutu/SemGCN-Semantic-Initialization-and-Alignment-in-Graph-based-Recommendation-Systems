@@ -1,0 +1,14 @@
+2025-12-23 15:37:09,760 - LightGCN - INFO - ### model configuration ###
+2025-12-23 15:37:09,761 - LightGCN - INFO - training.set=./dataset/yelp2018/train.txt
+2025-12-23 15:37:09,761 - LightGCN - INFO - test.set=./dataset/yelp2018/test.txt
+2025-12-23 15:37:09,761 - LightGCN - INFO - model={'name': 'LightGCN', 'type': 'graph'}
+2025-12-23 15:37:09,761 - LightGCN - INFO - item.ranking.topN=[10, 20]
+2025-12-23 15:37:09,761 - LightGCN - INFO - embedding.size=64
+2025-12-23 15:37:09,761 - LightGCN - INFO - max.epoch=1
+2025-12-23 15:37:09,761 - LightGCN - INFO - batch.size=2048
+2025-12-23 15:37:09,761 - LightGCN - INFO - learning.rate=0.001
+2025-12-23 15:37:09,761 - LightGCN - INFO - reg.lambda=0.0001
+2025-12-23 15:37:09,761 - LightGCN - INFO - LightGCN={'n_layer': 2}
+2025-12-23 15:37:09,761 - LightGCN - INFO - output=./results/
+2025-12-23 15:38:14,990 - LightGCN - INFO - ###Evaluation Results###
+2025-12-23 15:38:14,990 - LightGCN - INFO - ['Top 10\n', 'Hit Ratio:0.01667\n', 'Precision:0.01707\n', 'Recall:0.01793\n', 'NDCG:0.02102\n', 'Top 20\n', 'Hit Ratio:0.02986\n', 'Precision:0.01528\n', 'Recall:0.03212\n', 'NDCG:0.0262\n']

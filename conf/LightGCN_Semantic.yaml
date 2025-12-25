@@ -1,0 +1,45 @@
+# =============================================================================
+# LightGCN_Semantic Configuration (LLM4Rec-style)
+# =============================================================================
+model:
+  name: LightGCN_Semantic
+  type: graph
+
+# Dataset paths (Video_Games)
+training.set: ./dataset/Video_Games.train.csv
+test.set: ./dataset/Video_Games.test.csv
+
+# Evaluation
+item.ranking.topN: [10, 20]
+
+# Training
+embedding.size: 64
+max.epoch: 100
+batch.size: 2048
+learning.rate: 0.001
+reg.lambda: 0.0001
+
+# Output
+output: results/
+
+# =============================================================================
+# LightGCN_Semantic Specific Settings
+# =============================================================================
+LightGCN_Semantic:
+  # LightGCN architecture
+  n_layer: 2
+
+  # Rating threshold for positive samples (ratings >= threshold are positive)
+  rating_threshold: 3.0
+
+  # Semantic embeddings source (Video_Games metadata)
+  # Maps items via parent_asin field
+  semantic_data_path: dataset/cleaned_meta_Video_Games.jsonl
+
+  # BERT model for text encoding
+  bert_model: sentence-transformers/all-MiniLM-L6-v2
+
+  # Alignment loss (Mutual Regularization)
+  # λ controls how much collaborative embeddings should stay close to semantic
+  lambda_align: 0.1
+  alignment_type: mse # 'mse' or 'cosine'

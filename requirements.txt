@@ -1,0 +1,8 @@
+# faiss-cpu
+numba
+numpy
+PyYAML
+scipy
+# pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+scikit-learn
+sentence_transformers

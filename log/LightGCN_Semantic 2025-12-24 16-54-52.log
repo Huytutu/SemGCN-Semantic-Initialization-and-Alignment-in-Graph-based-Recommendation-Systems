@@ -1,0 +1,14 @@
+2025-12-24 16:54:53,568 - LightGCN_Semantic - INFO - ### model configuration ###
+2025-12-24 16:54:53,569 - LightGCN_Semantic - INFO - model={'name': 'LightGCN_Semantic', 'type': 'graph'}
+2025-12-24 16:54:53,569 - LightGCN_Semantic - INFO - training.set=./dataset/Video_Games.train.csv
+2025-12-24 16:54:53,569 - LightGCN_Semantic - INFO - test.set=./dataset/Video_Games.test.csv
+2025-12-24 16:54:53,569 - LightGCN_Semantic - INFO - item.ranking.topN=[10, 20]
+2025-12-24 16:54:53,569 - LightGCN_Semantic - INFO - embedding.size=64
+2025-12-24 16:54:53,569 - LightGCN_Semantic - INFO - max.epoch=100
+2025-12-24 16:54:53,569 - LightGCN_Semantic - INFO - batch.size=2048
+2025-12-24 16:54:53,570 - LightGCN_Semantic - INFO - learning.rate=0.001
+2025-12-24 16:54:53,570 - LightGCN_Semantic - INFO - reg.lambda=0.0001
+2025-12-24 16:54:53,570 - LightGCN_Semantic - INFO - output=results/
+2025-12-24 16:54:53,570 - LightGCN_Semantic - INFO - LightGCN_Semantic={'n_layer': 2, 'rating_threshold': 3.0, 'semantic_data_path': 'dataset/cleaned_meta_Video_Games.jsonl', 'bert_model': 'sentence-transformers/all-MiniLM-L6-v2', 'lambda_align': 0.1, 'alignment_type': 'mse'}
+2025-12-24 21:29:51,217 - LightGCN_Semantic - INFO - ###Evaluation Results###
+2025-12-24 21:29:51,218 - LightGCN_Semantic - INFO - ['Top 10\n', 'Hit Ratio:0.05679\n', 'Precision:0.00568\n', 'Recall:0.05679\n', 'NDCG:0.03035\n', 'Top 20\n', 'Hit Ratio:0.08628\n', 'Precision:0.00431\n', 'Recall:0.08628\n', 'NDCG:0.03777\n']
