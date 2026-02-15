@@ -256,8 +256,6 @@ class LightGCN_Semantic(LightGCN):
     
     def train(self):
         """Training Loop: BPR Loss + Alignment Loss.
-        
-        Extends LightGCN training with alignment regularization.
         """
         print("\n" + "=" * 60)
         print("Training: BPR Loss + λ * Alignment Loss")
@@ -329,7 +327,10 @@ class LightGCN_Semantic(LightGCN):
             
             # Evaluate every 5 epochs (fast_evaluation handles best model tracking via save())
             if epoch % 5 == 0:
-                self.fast_evaluation(epoch)
+                _, should_stop = self.fast_evaluation(epoch)
+                if should_stop:
+                    print(f'Stopping training at epoch {epoch + 1}')
+                    break
         
         # Use best embeddings from training (saved during fast_evaluation)
         self.user_emb, self.item_emb = self.best_user_emb, self.best_item_emb

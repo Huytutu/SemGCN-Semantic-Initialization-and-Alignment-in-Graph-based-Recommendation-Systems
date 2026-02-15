@@ -27,7 +27,7 @@ output: results/
 # =============================================================================
 LightGCN_Semantic:
   # LightGCN architecture
-  n_layer: 2
+  n_layer: 1
 
   # Rating threshold for positive samples (ratings >= threshold are positive)
   rating_threshold: 3.0
@@ -41,5 +41,5 @@ LightGCN_Semantic:
 
   # Alignment loss (Mutual Regularization)
   # λ controls how much collaborative embeddings should stay close to semantic
-  lambda_align: 0.1
-  alignment_type: mse # 'mse' or 'cosine'
+  lambda_align: 0.5
+  alignment_type: cosine # 'mse' or 'cosine'

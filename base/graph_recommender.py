@@ -14,6 +14,9 @@ class GraphRecommender(Recommender):
         self.bestPerformance = []
         self.topN = [int(num) for num in self.ranking]
         self.max_N = max(self.topN)
+        # Early stopping: stop if no improvement after N evaluations
+        self.early_stop_patience = 5
+        self.no_improvement_count = 0
 
     def print_model_info(self):
         super(GraphRecommender, self).print_model_info()
@@ -85,14 +88,23 @@ class GraphRecommender(Recommender):
 
         performance = {k: float(v) for m in measure[1:] for k, v in [m.strip().split(':')]}
 
+        improved = False
         if self.bestPerformance:
             count = sum(1 if self.bestPerformance[1][k] > performance[k] else -1 for k in performance)
             if count < 0:
                 self.bestPerformance = [epoch + 1, performance]
                 self.save()
+                improved = True
         else:
             self.bestPerformance = [epoch + 1, performance]
             self.save()
+            improved = True
+
+        # Early stopping logic
+        if improved:
+            self.no_improvement_count = 0
+        else:
+            self.no_improvement_count += 1
 
         print('-' * 80)
         print(f'Real-Time Ranking Performance (Top-{self.max_N} Item Recommendation)')
@@ -100,5 +112,11 @@ class GraphRecommender(Recommender):
         print(f'*Current Performance*\nEpoch: {epoch + 1}, {measure_str}')
         bp = ', '.join([f'{k}: {v}' for k, v in self.bestPerformance[1].items()])
         print(f'*Best Performance*\nEpoch: {self.bestPerformance[0]}, {bp}')
+        print(f'Early Stop Counter: {self.no_improvement_count}/{self.early_stop_patience}')
         print('-' * 80)
-        return measure
+        
+        # Return True if should stop early
+        should_stop = self.no_improvement_count >= self.early_stop_patience
+        if should_stop:
+            print(f'\n*** Early stopping triggered: No improvement for {self.early_stop_patience} evaluations ***\n')
+        return measure, should_stop

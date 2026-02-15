@@ -1,0 +1,14 @@
+2026-01-03 14:31:04,426 - LightGCN - INFO - ### model configuration ###
+2026-01-03 14:31:04,426 - LightGCN - INFO - training.set=./dataset/Video_Games.train.csv
+2026-01-03 14:31:04,426 - LightGCN - INFO - test.set=./dataset/Video_Games.test.csv
+2026-01-03 14:31:04,426 - LightGCN - INFO - model={'name': 'LightGCN', 'type': 'graph'}
+2026-01-03 14:31:04,426 - LightGCN - INFO - item.ranking.topN=[10, 20]
+2026-01-03 14:31:04,427 - LightGCN - INFO - embedding.size=64
+2026-01-03 14:31:04,427 - LightGCN - INFO - max.epoch=100
+2026-01-03 14:31:04,427 - LightGCN - INFO - batch.size=2048
+2026-01-03 14:31:04,427 - LightGCN - INFO - learning.rate=0.001
+2026-01-03 14:31:04,427 - LightGCN - INFO - reg.lambda=0.0001
+2026-01-03 14:31:04,427 - LightGCN - INFO - LightGCN={'n_layer': 2, 'rating_threshold': 3.0}
+2026-01-03 14:31:04,427 - LightGCN - INFO - output=./results/
+2026-01-03 15:06:45,254 - LightGCN - INFO - ###Evaluation Results###
+2026-01-03 15:06:45,254 - LightGCN - INFO - ['Top 10\n', 'Hit Ratio:0.05448\n', 'Precision:0.00545\n', 'Recall:0.05448\n', 'NDCG:0.02911\n', 'Top 20\n', 'Hit Ratio:0.08285\n', 'Precision:0.00414\n', 'Recall:0.08285\n', 'NDCG:0.03623\n']

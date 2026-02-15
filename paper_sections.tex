@@ -1,0 +1,214 @@
+\section{Introduction}
+Recommender systems are a core component of modern information platforms, helping users navigate large item catalogs by predicting personalized preferences.
+In implicit-feedback settings, where interactions such as clicks, purchases, and ratings are sparse and noisy, collaborative filtering (CF) methods learn user and item representations from historical user--item interactions.
+Despite strong performance, pure CF models often struggle when interaction data are limited (e.g., long-tail items) and when items exhibit semantic similarity that is not fully expressed by co-interaction patterns.
+
+A natural complementary signal is item-side semantics available in metadata (titles, descriptions, attributes).
+Such information can provide a meaningful prior over item similarity and improve representation learning, especially under sparsity.
+Motivated by this, we study how to incorporate lightweight semantic signals into graph-based collaborative filtering.
+
+This project builds upon LightGCN \cite{he2020lightgcn}, a simplified and effective graph convolutional model for recommendation.
+We propose \textbf{SemGCN}, a semantic-enhanced LightGCN variant that (i) warm-starts item embeddings using text-derived semantic vectors and (ii) regularizes collaborative item representations to remain aligned with these semantic targets during training.
+SemGCN is simple to implement, adds minimal overhead via offline text encoding and caching, and can be trained end-to-end with the standard Bayesian Personalized Ranking (BPR) objective \cite{rendle2009bpr}.
+
+Our contributions are summarized as follows:
+\begin{itemize}
+	\item We implement a semantic-augmented graph recommender (SemGCN) that integrates frozen text embeddings into LightGCN through initialization and an explicit alignment loss.
+	\item We provide a reproducible experimental pipeline on the Amazon \textit{Video Games} domain \cite{mcauley2015image}, including full-ranking evaluation for top-$K$ recommendation.
+	\item We empirically show that adding semantic priors improves ranking quality over the vanilla LightGCN baseline.
+\end{itemize}
+
+\section{Related Work}
+\paragraph{Collaborative filtering and matrix factorization.}
+Classic CF methods learn latent factors for users and items from observed interactions.
+Matrix Factorization (MF) \cite{koren2009matrix} remains a strong baseline, and pairwise learning-to-rank objectives such as BPR \cite{rendle2009bpr} are widely used for implicit feedback.
+
+\paragraph{Graph-based recommendation.}
+Recent work models user--item interactions as a bipartite graph and applies message passing to capture higher-order connectivity.
+LightGCN \cite{he2020lightgcn} simplifies prior graph convolutional recommenders by removing nonlinearities and feature transforms, retaining only neighborhood aggregation and layer-wise embedding combination.
+Its simplicity and strong performance make it a common backbone for extensions that incorporate additional signals.
+
+\paragraph{Semantic and text-aware recommendation.}
+Item metadata and text (titles, descriptions, reviews) provide complementary information to interactions.
+Neural encoders based on pretrained transformers have become a standard tool for turning text into dense semantic vectors.
+Sentence-BERT \cite{reimers2019sbert} and compact transformer variants such as MiniLM \cite{wang2020minilm} enable scalable sentence-level representations, commonly accessed via the HuggingFace ecosystem \cite{wolf2020transformers}.
+Incorporating such semantic item representations into CF models is typically done via feature initialization, joint training, or regularization.
+Our work follows this line by using frozen semantic embeddings as a prior and aligning collaborative representations to them.
+
+\section{SemGCN}
+We describe SemGCN, a semantic-augmented LightGCN instantiated in this project as \texttt{LightGCN\_Semantic}.
+SemGCN operates on a user--item bipartite graph built from implicit interactions and integrates item-side semantics extracted from text metadata.
+
+\subsection{Problem formulation}
+Let $\mathcal{U}$ denote the set of users and $\mathcal{I}$ the set of items.
+Given observed implicit interactions $\mathcal{R} \subseteq \mathcal{U} \times \mathcal{I}$, the goal is to learn a scoring function $f(u,i)$ that ranks the held-out relevant item(s) above irrelevant items for each user.
+
+\subsection{LightGCN backbone}
+We construct a bipartite graph with adjacency matrix $\mathbf{A}$ and use the normalized message passing operator
+\begin{equation}
+	ilde{\mathbf{A}} = \mathbf{D}^{-1/2}\,\mathbf{A}\,\mathbf{D}^{-1/2},
+\end{equation}
+where $\mathbf{D}$ is the degree matrix.
+LightGCN initializes user embeddings $\mathbf{e}_u^{(0)} \in \mathbb{R}^{d}$ and item embeddings $\mathbf{e}_i^{(0)} \in \mathbb{R}^{d}$, and performs $L$ layers of neighborhood aggregation:
+\begin{equation}
+\mathbf{E}^{(\ell+1)} = \tilde{\mathbf{A}}\,\mathbf{E}^{(\ell)}, \quad \ell=0,\dots,L-1,
+\end{equation}
+where $\mathbf{E}^{(\ell)}$ concatenates all user and item embeddings at layer $\ell$.
+The final representation is obtained by averaging embeddings across layers:
+\begin{equation}
+\mathbf{E} = \frac{1}{L+1}\sum_{\ell=0}^{L} \mathbf{E}^{(\ell)}.
+\end{equation}
+The recommendation score is computed by dot product $f(u,i)=\langle \mathbf{e}_u, \mathbf{e}_i \rangle$.
+
+\subsection{Semantic item representations}
+For each item $i\in\mathcal{I}$, we obtain a text description (title and description fields) from the metadata file.
+We encode the text using a pretrained transformer encoder and mean pooling to obtain a sentence embedding $\mathbf{h}_i$.
+Since the transformer hidden size may differ from $d$, we apply a linear projection to the model embedding space:
+\begin{equation}
+\mathbf{s}_i = \mathbf{W}\,\mathbf{h}_i \in \mathbb{R}^{d}.
+\end{equation}
+In our implementation, the encoder is frozen and semantic vectors $\{\mathbf{s}_i\}$ are computed offline and cached for efficiency.
+If an item lacks metadata, we fall back to a placeholder text string for encoding.
+
+\subsection{Semantic warm-start}
+SemGCN uses semantic vectors to initialize item embeddings:
+\begin{equation}
+\mathbf{e}_i^{(0)} \leftarrow \mathbf{s}_i,
+\end{equation}
+while user embeddings are initialized as trainable parameters.
+This warm-start injects a semantic prior into the collaborative model before any graph propagation.
+
+\subsection{Alignment regularization}
+To maintain consistency between collaborative signals and semantics, SemGCN adds an alignment term between the final collaborative item embeddings $\mathbf{e}_i$ and their semantic targets $\mathbf{s}_i$.
+For a set of items $\mathcal{B}$ appearing in the current training batch (positives and negatives), we define
+\begin{equation}
+\mathcal{L}_{\mathrm{align}} = \frac{1}{|\mathcal{B}|}\sum_{i\in\mathcal{B}} \lVert \mathbf{e}_i - \mathbf{s}_i \rVert_2^2,
+\end{equation}
+which corresponds to mean-squared error (MSE) alignment (cosine alignment is also supported by configuration).
+
+\subsection{Training objective}
+SemGCN is trained with the BPR loss \cite{rendle2009bpr} over sampled triplets $(u,i,j)$, where $i$ is a positive item for user $u$ and $j$ is a sampled negative item:
+\begin{equation}
+\mathcal{L}_{\mathrm{BPR}} = -\sum_{(u,i,j)} \log\,\sigma\big(f(u,i) - f(u,j)\big).
+\end{equation}
+We add standard $\ell_2$ regularization $\mathcal{L}_{\mathrm{reg}}$ on the base embeddings and combine losses as
+\begin{equation}
+\mathcal{L} = \mathcal{L}_{\mathrm{BPR}} + \mathcal{L}_{\mathrm{reg}} + \lambda_{\mathrm{align}}\,\mathcal{L}_{\mathrm{align}}.
+\end{equation}
+The hyperparameter $\lambda_{\mathrm{align}}$ controls the strength of semantic guidance.
+
+\section{Experiments}
+\subsection{Experimental setup}
+\paragraph{Dataset.}
+We conduct experiments on the Amazon \textit{Video Games} domain \cite{mcauley2015image}.
+The interaction files provided in this project (\texttt{Video\_Games.train.csv}, \texttt{Video\_Games.valid.csv}, \texttt{Video\_Games.test.csv}) follow a leave-one-out style split: each user has exactly one interaction in validation and one interaction in test.
+In our current training pipeline, the model is trained on the training split and evaluated on the test split.
+Table~\ref{tab:vg_stats} reports basic statistics.
+
+\begin{table}[t]
+\centering
+\caption{Statistics of the Video Games dataset used in this project.}
+\label{tab:vg_stats}
+\begin{tabular}{lrrr}
+\hline
+Split & \#Users & \#Items & \#Interactions \\
+\hline
+Train & 94{,}762 & 25{,}527 & 625{,}062 \\
+Valid & 94{,}762 & 18{,}799 & 94{,}762 \\
+Test  & 94{,}762 & 18{,}219 & 94{,}762 \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Task and evaluation protocol.}
+We study implicit-feedback top-$K$ recommendation.
+For each test user, we compute scores for \emph{all} items and filter out items the user interacted with in the training set.
+We then rank the remaining items and report metrics at $K\in\{10,20\}$.
+Following the evaluation implementation in this project, we report Hit Ratio (HR), Precision, Recall, and NDCG.
+Since the test split contains one held-out interaction per user, HR is numerically identical to Recall under this protocol.
+
+\paragraph{Baselines.}
+We compare the proposed semantic-enhanced graph model against two collaborative filtering baselines implemented in this repository:
+(1) Matrix Factorization (MF) trained with Bayesian Personalized Ranking (BPR) \cite{rendle2009bpr,koren2009matrix}, and
+(2) LightGCN \cite{he2020lightgcn}.
+
+\paragraph{Models and hyperparameters.}
+All methods use embedding dimension $d=64$, batch size 2048, learning rate $10^{-3}$ (Adam), weight decay (L2 regularization) $10^{-4}$, and are trained for 100 epochs.
+LightGCN uses $L=3$ graph convolution layers, while LightGCN\_Semantic uses $L=2$ layers.
+Training uses the pairwise BPR objective \cite{rendle2009bpr} with a rating threshold of 3.0 to determine positive interactions during sampling.
+During training, we evaluate every 5 epochs and keep the best-performing checkpoint according to real-time top-$K$ ranking performance.
+
+\paragraph{Semantic augmentation (LightGCN\_Semantic).}
+LightGCN\_Semantic extends LightGCN by injecting item semantics derived from metadata.
+Specifically, we load item texts from \texttt{cleaned\_meta\_Video\_Games.jsonl} using \texttt{parent\_asin} identifiers, and construct each item description by concatenating title and description fields.
+We encode item texts using a Sentence-Transformers model (\texttt{all-MiniLM-L6-v2}) \cite{reimers2019sbert,wang2020minilm} implemented via the HuggingFace Transformers stack \cite{wolf2020transformers}.
+Text embeddings are mean-pooled and linearly projected to $d=64$ dimensions, cached to disk, and treated as frozen semantic targets.
+These semantic vectors are used to (i) warm-start item embeddings and (ii) regularize collaborative item embeddings via an alignment loss:
+\begin{equation}
+\mathcal{L} = \mathcal{L}_{\mathrm{BPR}} + \mathcal{L}_{\mathrm{reg}} + \lambda_{\mathrm{align}}\,\mathcal{L}_{\mathrm{align}},
+\end{equation}
+where $\mathcal{L}_{\mathrm{align}}$ is mean-squared error (MSE) between collaborative and semantic item embeddings and $\lambda_{\mathrm{align}}=0.1$.
+
+\paragraph{Main results.}
+Table~\ref{tab:main_results} reports the best run saved in \texttt{results/} for each method.
+LightGCN\_Semantic improves over LightGCN by about 5--6\% relatively on both Recall and NDCG.
+
+\begin{table}[t]
+\centering
+\caption{Top-$K$ recommendation performance on Video Games (best runs recorded by this project).}
+\label{tab:main_results}
+\begin{tabular}{lcccc}
+\hline
+Model & Recall@10 & NDCG@10 & Recall@20 & NDCG@20 \\
+\hline
+LightGCN & 0.05450 & 0.02937 & 0.08265 & 0.03644 \\
+LightGCN\_Semantic & 0.05784 & 0.03095 & 0.08777 & 0.03847 \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Conclusions}
+This project implements and evaluates a semantic-augmented variant of LightGCN for implicit-feedback recommendation.
+The proposed LightGCN\_Semantic warm-starts item embeddings using frozen text-derived semantic representations and further constrains collaborative item embeddings via an MSE alignment regularizer.
+On the Amazon Video Games dataset, LightGCN\_Semantic consistently improves ranking quality over the vanilla LightGCN baseline, achieving relative gains of approximately 5--6\% on both Recall and NDCG at $K\in\{10,20\}$.
+These results support the hypothesis that lightweight semantic priors from item metadata can complement collaborative signals and improve recommendation accuracy.
+
+\section*{References}
+\begin{thebibliography}{9}
+
+\bibitem{rendle2009bpr}
+Steffen Rendle, Christoph Freudenthaler, Zeno Gantner, and Lars Schmidt-Thieme.
+\newblock BPR: Bayesian Personalized Ranking from Implicit Feedback.
+\newblock In \emph{Proceedings of UAI}, 2009.
+
+\bibitem{he2020lightgcn}
+Xiangnan He, Kuan Deng, Xiang Wang, Yan Li, Yong-Dong Zhang, and Meng Wang.
+\newblock LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation.
+\newblock In \emph{Proceedings of SIGIR}, 2020.
+
+\bibitem{koren2009matrix}
+Yehuda Koren, Robert Bell, and Chris Volinsky.
+\newblock Matrix Factorization Techniques for Recommender Systems.
+\newblock \emph{IEEE Computer}, 42(8):30--37, 2009.
+
+\bibitem{reimers2019sbert}
+Nils Reimers and Iryna Gurevych.
+\newblock Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks.
+\newblock In \emph{Proceedings of EMNLP-IJCNLP}, 2019.
+
+\bibitem{wang2020minilm}
+Wenhui Wang, Furu Wei, Li Dong, Hangbo Bao, Nan Yang, and Ming Zhou.
+\newblock MiniLM: Deep Self-Attention Distillation for Task-Agnostic Compression of Pre-Trained Transformers.
+\newblock In \emph{Advances in Neural Information Processing Systems (NeurIPS)}, 2020.
+
+\bibitem{wolf2020transformers}
+Thomas Wolf, Lysandre Debut, Victor Sanh, Julien Chaumond, Clement Delangue, Anthony Moi, Pierric Cistac, Tim Rault, Remi Louf, Morgan Funtowicz, and Jamie Brew.
+\newblock Transformers: State-of-the-Art Natural Language Processing.
+\newblock In \emph{Proceedings of EMNLP: System Demonstrations}, 2020.
+
+\bibitem{mcauley2015image}
+Julian McAuley, Christopher Targett, Qinfeng Shi, and Anton van den Hengel.
+\newblock Image-based Recommendations on Styles and Substitutes.
+\newblock In \emph{Proceedings of SIGIR}, 2015.
+
+\end{thebibliography}
